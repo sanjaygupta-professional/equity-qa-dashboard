@@ -212,11 +212,23 @@ def main():
         help="Choose the analysis view"
     )
     
-    # Add some sidebar info
+    # Add refresh controls
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 🔄 Data Controls")
+    
+    if st.sidebar.button("🔄 Refresh Data", help="Clear cache and reload fresh data from database"):
+        # Clear all cached data
+        st.cache_data.clear()
+        st.cache_resource.clear()
+        st.sidebar.success("✅ Data refreshed!")
+        st.rerun()
+    
+    # Show data info
     st.sidebar.markdown("---")
     st.sidebar.markdown("### ℹ️ About")
     st.sidebar.markdown("This dashboard validates equity data quality across financial statements.")
-    st.sidebar.markdown(f"**Last Updated:** {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    st.sidebar.markdown(f"**Session Started:** {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    st.sidebar.caption("💡 Click 'Refresh Data' after adding new companies")
     
     # Main content based on selection
     try:
