@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Indian Equity Valuation Dashboard</title>
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -235,27 +234,13 @@
             font-size: 1.2em;
         }
 
-        .quality-badge {
-            display: inline-block;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 0.85em;
-            font-weight: 600;
-        }
-
-        .quality-good {
+        .success-message {
             background: #d4edda;
             color: #155724;
-        }
-
-        .quality-warning {
-            background: #fff3cd;
-            color: #856404;
-        }
-
-        .quality-bad {
-            background: #f8d7da;
-            color: #721c24;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #c3e6cb;
         }
 
         @media (max-width: 768px) {
@@ -294,6 +279,7 @@
         </div>
 
         <div id="overview" class="tab-content active">
+            <div class="success-message">✅ Dashboard loaded successfully with 7 companies!</div>
             <div class="metrics" id="metricsContainer"></div>
             <div class="chart-container">
                 <div class="chart-title">📋 Company Data Table</div>
@@ -358,32 +344,48 @@
     </div>
 
     <script>
+        // Embedded CSV data - no external file needed!
+        const csvData = `Symbol,Ticker_NS,Base_Profit_Row,Base_Year,Sales_2025,Dividend_Payout_%,EPS_TTM,Operating_Profit_Base,Operating_Profit_2025,Tax_%,Interest,Market_Cap,Shares,Cost_of_Equity,CAGR,PE,PEG,Dividend_Yield,Dividend Yield,EV,EV_to_Capital_Employed,Inverse_Earning_Yield,Book_Value,Intrinsic_Value,Reverse Beta calculation,Current_Price,Beta from Money Control
+COFORGE,COFORGE.NS,Operating Profit,2020,12051,63,29.99,725,1694,26,135,57935.04,33.45,13.93,0.18,59.85,3.24,0.13,1.777631643,58636.04,76.35,34.61,190.68,126.8,1.099554235,1794.8,1.42
+HCLTECH,HCLTECH.NS,Operating Profit,2020,117055,94,62.56,17316,25504,25,644,397850.44,271.37,13.06,0.08,24.67,3.06,0.26,5.723579043,400141.44,141.19,15.69,256.68,1415.77,0.970282318,1543.5,1.14
+INFY,INFY.NS,Operating Profit,2020,162990,67,67.71,22267,39236,29,416,614472.91,415.44,12.12,0.12,21.94,1.83,0.18,4.259695576,614472.91,296.42,15.66,230.64,2345.28,0.8306092125,1485.5,1.21
+LTIM,LTIM.NS,Operating Profit,2020,38008,42,164.31,2029,6495,26,279,153869.95,29.64,15.21,0.26,34.72,1.33,0.09,1.613365114,153871.95,4808.5,23.69,765.78,319.07,1.2897474,5704.5,1.26
+MPHASIS,MPHASIS.NS,Operating Profit,2020,14230,64,91.64,1650,2647,25,166,55037.98,19.03,15.68,0.1,30.38,3.06,0.17,3.197383267,56153.98,43,21.21,506.07,104.06,1.359583952,2784.2,1.51
+OFSS,OFSS.NS,Operating Profit,2020,6847,97,273.17,2229,3076,28,0,73114.32,8.69,12.72,0.07,30.78,4.63,0.09,4.084108221,73114.32,1700.33,23.77,962.13,,0.9197622585,8407,1.49
+PERSISTENT,PERSISTENT.NS,Operating Profit,2020,11939,39,107.03,493,2058,23,67,83939.88,15.64,15.95,0.33,55.41,1.68,0.05,0.8652573651,83939.88,1076.15,40.79,404.03,80.53,1.399702823,5931,`;
+
         let equityData = [];
         let filteredData = [];
 
-        // Load CSV data
-        async function loadData() {
-            try {
-                const response = await fetch('valuation_analysis_2025.csv');
-                const csvText = await response.text();
+        // Parse CSV data
+        function parseCSV(csv) {
+            const lines = csv.trim().split('\n');
+            const headers = lines[0].split(',');
+            const data = [];
 
-                Papa.parse(csvText, {
-                    header: true,
-                    dynamicTyping: true,
-                    complete: function(results) {
-                        equityData = results.data.filter(row => row.Symbol);
-                        filteredData = [...equityData];
-                        initializeDashboard();
-                    }
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',');
+                const row = {};
+
+                headers.forEach((header, index) => {
+                    const value = values[index];
+                    // Try to convert to number if possible
+                    row[header] = isNaN(value) || value === '' ? value : parseFloat(value);
                 });
-            } catch (error) {
-                console.error('Error loading data:', error);
-                document.querySelector('.container').innerHTML =
-                    '<div class="loading">❌ Error loading data. Please ensure valuation_analysis_2025.csv is in the same folder.</div>';
+
+                if (row.Symbol) {
+                    data.push(row);
+                }
             }
+
+            return data;
         }
 
+        // Initialize dashboard
         function initializeDashboard() {
+            equityData = parseCSV(csvData);
+            filteredData = [...equityData];
+
             createOverview();
             createQualityAnalysis();
             createValuationCharts();
@@ -405,22 +407,25 @@
 
         function createOverview() {
             // Metrics
+            const totalMarketCap = equityData.reduce((sum, d) => sum + (d.Market_Cap || 0), 0);
+            const avgPE = equityData.reduce((sum, d) => sum + (d.PE || 0), 0) / equityData.length;
+
             const metricsHTML = `
                 <div class="metric-card">
                     <h3>Total Companies</h3>
                     <div class="value">${equityData.length}</div>
                 </div>
                 <div class="metric-card">
-                    <h3>Total Columns</h3>
-                    <div class="value">${Object.keys(equityData[0]).length}</div>
-                </div>
-                <div class="metric-card">
-                    <h3>Avg Market Cap</h3>
-                    <div class="value">₹${Math.round(equityData.reduce((sum, d) => sum + (d.Market_Cap || 0), 0) / equityData.length).toLocaleString()}</div>
+                    <h3>Total Market Cap</h3>
+                    <div class="value">₹${Math.round(totalMarketCap).toLocaleString()}</div>
                 </div>
                 <div class="metric-card">
                     <h3>Avg PE Ratio</h3>
-                    <div class="value">${(equityData.reduce((sum, d) => sum + (d.PE || 0), 0) / equityData.length).toFixed(2)}</div>
+                    <div class="value">${avgPE.toFixed(2)}</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Avg Dividend Yield</h3>
+                    <div class="value">${(equityData.reduce((sum, d) => sum + (d.Dividend_Yield || 0), 0) / equityData.length).toFixed(2)}%</div>
                 </div>
             `;
             document.getElementById('metricsContainer').innerHTML = metricsHTML;
@@ -440,7 +445,8 @@
                     if (col === 'Current_Price') value = '₹' + (value || 0).toLocaleString();
                     else if (col === 'Market_Cap') value = '₹' + (value || 0).toLocaleString();
                     else if (col === 'Dividend_Yield') value = (value || 0).toFixed(2) + '%';
-                    tableHTML += `<td>${value || 'N/A'}</td>`;
+                    else if (col === 'PE') value = (value || 0).toFixed(2);
+                    tableHTML += `<td>${value !== null && value !== undefined ? value : 'N/A'}</td>`;
                 });
                 tableHTML += '</tr>';
             });
@@ -452,7 +458,7 @@
             let statsHTML = '<table><thead><tr><th>Metric</th><th>Min</th><th>Max</th><th>Average</th></tr></thead><tbody>';
 
             numericCols.forEach(col => {
-                const values = equityData.map(d => d[col]).filter(v => v != null);
+                const values = equityData.map(d => d[col]).filter(v => v != null && !isNaN(v));
                 if (values.length > 0) {
                     statsHTML += `<tr>
                         <td><strong>${col.replace(/_/g, ' ')}</strong></td>
@@ -472,7 +478,7 @@
             const missingData = [];
 
             columns.forEach(col => {
-                const missing = equityData.filter(row => row[col] == null || row[col] === '').length;
+                const missing = equityData.filter(row => row[col] == null || row[col] === '' || (typeof row[col] === 'string' && row[col].trim() === '')).length;
                 if (missing > 0) {
                     missingData.push({
                         column: col,
@@ -483,18 +489,23 @@
             });
 
             // Quality metrics
+            const qualityScore = missingData.length === 0 ? 100 : Math.max(70, 100 - (missingData.length * 5));
             const qualityHTML = `
                 <div class="metric-card">
                     <h3>Columns with Missing Data</h3>
                     <div class="value">${missingData.length}</div>
                 </div>
                 <div class="metric-card">
-                    <h3>Duplicate Rows</h3>
-                    <div class="value">0</div>
+                    <h3>Complete Columns</h3>
+                    <div class="value">${columns.length - missingData.length}</div>
                 </div>
                 <div class="metric-card">
                     <h3>Data Quality Score</h3>
-                    <div class="value">${missingData.length === 0 ? '100%' : '85%'}</div>
+                    <div class="value">${qualityScore}%</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Duplicate Rows</h3>
+                    <div class="value">0</div>
                 </div>
             `;
             document.getElementById('qualityMetrics').innerHTML = qualityHTML;
@@ -510,7 +521,9 @@
 
                 Plotly.newPlot('missingChart', [trace], {
                     yaxis: { title: 'Missing %' },
-                    height: 400
+                    xaxis: { tickangle: -45 },
+                    height: 400,
+                    margin: { b: 120 }
                 });
 
                 // Quality issues table
@@ -528,7 +541,7 @@
 
         function createValuationCharts() {
             // PE Ratio histogram
-            const peValues = equityData.map(d => d.PE).filter(v => v != null);
+            const peValues = equityData.map(d => d.PE).filter(v => v != null && !isNaN(v));
             const peTrace = {
                 x: peValues,
                 type: 'histogram',
@@ -565,7 +578,8 @@
             Plotly.newPlot('priceValueChart', [priceTrace, lineTrace], {
                 xaxis: { title: 'Intrinsic Value (₹)' },
                 yaxis: { title: 'Current Price (₹)' },
-                height: 500
+                height: 500,
+                showlegend: true
             });
 
             // Market Cap
@@ -603,9 +617,12 @@
                 y: betaData.map(d => d['Beta from Money Control']),
                 type: 'bar',
                 marker: {
-                    color: betaData.map(d => d['Beta from Money Control']),
-                    colorscale: 'RdYlGn',
-                    reversescale: true
+                    color: betaData.map(d => {
+                        const beta = d['Beta from Money Control'];
+                        if (beta < 0.8) return '#27ae60';
+                        if (beta > 1.2) return '#e74c3c';
+                        return '#f39c12';
+                    })
                 }
             };
 
@@ -620,6 +637,13 @@
                     y0: 1,
                     y1: 1,
                     line: { color: 'red', dash: 'dash', width: 2 }
+                }],
+                annotations: [{
+                    x: betaData.length / 2,
+                    y: 1,
+                    text: 'Market Beta = 1',
+                    showarrow: false,
+                    yshift: 10
                 }]
             });
 
@@ -630,8 +654,10 @@
                 y: profitGrowthData.map(d => ((d.Operating_Profit_2025 - d.Operating_Profit_Base) / d.Operating_Profit_Base * 100)),
                 type: 'bar',
                 marker: {
-                    color: profitGrowthData.map(d => ((d.Operating_Profit_2025 - d.Operating_Profit_Base) / d.Operating_Profit_Base * 100)),
-                    colorscale: 'RdYlGn'
+                    color: profitGrowthData.map(d => {
+                        const growth = ((d.Operating_Profit_2025 - d.Operating_Profit_Base) / d.Operating_Profit_Base * 100);
+                        return growth > 100 ? '#27ae60' : growth > 50 ? '#3498db' : '#f39c12';
+                    })
                 }
             };
             Plotly.newPlot('profitGrowthChart', [growthTrace], {
@@ -642,10 +668,12 @@
         }
 
         function createExplorer() {
-            const peMin = Math.min(...equityData.map(d => d.PE).filter(v => v != null));
-            const peMax = Math.max(...equityData.map(d => d.PE).filter(v => v != null));
-            const mcMin = Math.min(...equityData.map(d => d.Market_Cap).filter(v => v != null));
-            const mcMax = Math.max(...equityData.map(d => d.Market_Cap).filter(v => v != null));
+            const peValues = equityData.map(d => d.PE).filter(v => v != null && !isNaN(v));
+            const peMin = Math.min(...peValues);
+            const peMax = Math.max(...peValues);
+            const mcValues = equityData.map(d => d.Market_Cap).filter(v => v != null && !isNaN(v));
+            const mcMin = Math.min(...mcValues);
+            const mcMax = Math.max(...mcValues);
 
             const filtersHTML = `
                 <div class="filter-group">
@@ -705,11 +733,16 @@
                 tableHTML += '<tr>';
                 cols.forEach(col => {
                     let value = row[col];
-                    if (col === 'Current_Price' || col === 'Intrinsic_Value') value = '₹' + (value || 0).toLocaleString();
-                    else if (col === 'Market_Cap') value = '₹' + (value || 0).toLocaleString();
-                    else if (col === 'Dividend_Yield') value = (value || 0).toFixed(2) + '%';
-                    else if (col === 'PE' || col === 'PEG') value = (value || 0).toFixed(2);
-                    tableHTML += `<td>${value || 'N/A'}</td>`;
+                    if (col === 'Current_Price' || col === 'Intrinsic_Value') {
+                        value = value ? '₹' + value.toLocaleString() : 'N/A';
+                    } else if (col === 'Market_Cap') {
+                        value = '₹' + (value || 0).toLocaleString();
+                    } else if (col === 'Dividend_Yield') {
+                        value = (value || 0).toFixed(2) + '%';
+                    } else if (col === 'PE' || col === 'PEG') {
+                        value = (value || 0).toFixed(2);
+                    }
+                    tableHTML += `<td>${value}</td>`;
                 });
                 tableHTML += '</tr>';
             });
@@ -718,17 +751,28 @@
         }
 
         function exportFilteredData() {
-            const csv = Papa.unparse(filteredData);
+            const headers = Object.keys(filteredData[0]);
+            let csv = headers.join(',') + '\n';
+
+            filteredData.forEach(row => {
+                const values = headers.map(header => {
+                    const value = row[header];
+                    return value !== null && value !== undefined ? value : '';
+                });
+                csv += values.join(',') + '\n';
+            });
+
             const blob = new Blob([csv], { type: 'text/csv' });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
             a.download = 'filtered_equity_data.csv';
             a.click();
+            window.URL.revokeObjectURL(url);
         }
 
-        // Load data on page load
-        loadData();
+        // Initialize dashboard on page load
+        initializeDashboard();
     </script>
 </body>
 </html>
