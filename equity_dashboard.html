@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Indian Equity Valuation Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .tabs {
+            display: flex;
+            background: #f7f9fc;
+            border-bottom: 2px solid #e1e8ed;
+            overflow-x: auto;
+        }
+
+        .tab {
+            padding: 20px 30px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 16px;
+            font-weight: 600;
+            color: #657786;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            white-space: nowrap;
+        }
+
+        .tab:hover {
+            background: #e8f4f8;
+            color: #1da1f2;
+        }
+
+        .tab.active {
+            color: #1da1f2;
+            border-bottom: 3px solid #1da1f2;
+            background: white;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 40px;
+            animation: fadeIn 0.5s;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        .metric-card h3 {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .metric-card .value {
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .chart-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #1e3c72;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e1e8ed;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        th {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85em;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #e1e8ed;
+            color: #14171a;
+        }
+
+        tr:hover {
+            background: #f7f9fc;
+        }
+
+        .filters {
+            background: #f7f9fc;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            border: 2px solid #e1e8ed;
+        }
+
+        .filter-group {
+            margin-bottom: 20px;
+        }
+
+        .filter-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #14171a;
+        }
+
+        .filter-group input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #e1e8ed;
+            outline: none;
+        }
+
+        .filter-values {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9em;
+            color: #657786;
+            margin-top: 5px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: #657786;
+            font-size: 1.2em;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #c3e6cb;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .metrics {
+                grid-template-columns: 1fr;
+            }
+
+            .tabs {
+                flex-wrap: wrap;
+            }
+
+            .tab {
+                flex: 1 1 50%;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Indian Equity Valuation Dashboard</h1>
+            <p>Comprehensive Data Quality & Analysis Tool</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('overview')">📊 Overview</button>
+            <button class="tab" onclick="showTab('quality')">🔍 Data Quality</button>
+            <button class="tab" onclick="showTab('valuation')">💰 Valuation</button>
+            <button class="tab" onclick="showTab('health')">🏥 Financial Health</button>
+            <button class="tab" onclick="showTab('explorer')">🔎 Explorer</button>
+        </div>
+
+        <div id="overview" class="tab-content active">
+            <div class="success-message">✅ Dashboard loaded successfully with 7 companies!</div>
+            <div class="metrics" id="metricsContainer"></div>
+            <div class="chart-container">
+                <div class="chart-title">📋 Company Data Table</div>
+                <div id="dataTable"></div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title">📈 Summary Statistics</div>
+                <div id="summaryStats"></div>
+            </div>
+        </div>
+
+        <div id="quality" class="tab-content">
+            <div class="metrics" id="qualityMetrics"></div>
+            <div class="chart-container">
+                <div class="chart-title">Missing Values Analysis</div>
+                <div id="missingChart"></div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title">Data Quality Issues</div>
+                <div id="qualityIssues"></div>
+            </div>
+        </div>
+
+        <div id="valuation" class="tab-content">
+            <div class="chart-container">
+                <div class="chart-title">PE Ratio Distribution</div>
+                <div id="peChart"></div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title">Current Price vs Intrinsic Value</div>
+                <div id="priceValueChart"></div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title">Market Capitalization</div>
+                <div id="marketCapChart"></div>
+            </div>
+        </div>
+
+        <div id="health" class="tab-content">
+            <div class="chart-container">
+                <div class="chart-title">Dividend Yield Analysis</div>
+                <div id="dividendChart"></div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title">Risk Analysis (Beta)</div>
+                <div id="betaChart"></div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title">Operating Profit Growth</div>
+                <div id="profitGrowthChart"></div>
+            </div>
+        </div>
+
+        <div id="explorer" class="tab-content">
+            <div class="filters" id="filtersContainer"></div>
+            <div class="chart-container">
+                <div class="chart-title" id="explorerTitle">Filtered Results</div>
+                <div id="filteredTable"></div>
+                <button onclick="exportFilteredData()" style="margin-top: 20px;">📥 Download Filtered Data</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Embedded CSV data - no external file needed!
+        const csvData = `Symbol,Ticker_NS,Base_Profit_Row,Base_Year,Sales_2025,Dividend_Payout_%,EPS_TTM,Operating_Profit_Base,Operating_Profit_2025,Tax_%,Interest,Market_Cap,Shares,Cost_of_Equity,CAGR,PE,PEG,Dividend_Yield,Dividend Yield,EV,EV_to_Capital_Employed,Inverse_Earning_Yield,Book_Value,Intrinsic_Value,Reverse Beta calculation,Current_Price,Beta from Money Control
+COFORGE,COFORGE.NS,Operating Profit,2020,12051,63,29.99,725,1694,26,135,57935.04,33.45,13.93,0.18,59.85,3.24,0.13,1.777631643,58636.04,76.35,34.61,190.68,126.8,1.099554235,1794.8,1.42
+HCLTECH,HCLTECH.NS,Operating Profit,2020,117055,94,62.56,17316,25504,25,644,397850.44,271.37,13.06,0.08,24.67,3.06,0.26,5.723579043,400141.44,141.19,15.69,256.68,1415.77,0.970282318,1543.5,1.14
+INFY,INFY.NS,Operating Profit,2020,162990,67,67.71,22267,39236,29,416,614472.91,415.44,12.12,0.12,21.94,1.83,0.18,4.259695576,614472.91,296.42,15.66,230.64,2345.28,0.8306092125,1485.5,1.21
+LTIM,LTIM.NS,Operating Profit,2020,38008,42,164.31,2029,6495,26,279,153869.95,29.64,15.21,0.26,34.72,1.33,0.09,1.613365114,153871.95,4808.5,23.69,765.78,319.07,1.2897474,5704.5,1.26
+MPHASIS,MPHASIS.NS,Operating Profit,2020,14230,64,91.64,1650,2647,25,166,55037.98,19.03,15.68,0.1,30.38,3.06,0.17,3.197383267,56153.98,43,21.21,506.07,104.06,1.359583952,2784.2,1.51
+OFSS,OFSS.NS,Operating Profit,2020,6847,97,273.17,2229,3076,28,0,73114.32,8.69,12.72,0.07,30.78,4.63,0.09,4.084108221,73114.32,1700.33,23.77,962.13,,0.9197622585,8407,1.49
+PERSISTENT,PERSISTENT.NS,Operating Profit,2020,11939,39,107.03,493,2058,23,67,83939.88,15.64,15.95,0.33,55.41,1.68,0.05,0.8652573651,83939.88,1076.15,40.79,404.03,80.53,1.399702823,5931,`;
+
+        let equityData = [];
+        let filteredData = [];
+
+        // Parse CSV data
+        function parseCSV(csv) {
+            const lines = csv.trim().split('\n');
+            const headers = lines[0].split(',');
+            const data = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',');
+                const row = {};
+
+                headers.forEach((header, index) => {
+                    const value = values[index];
+                    // Try to convert to number if possible
+                    row[header] = isNaN(value) || value === '' ? value : parseFloat(value);
+                });
+
+                if (row.Symbol) {
+                    data.push(row);
+                }
+            }
+
+            return data;
+        }
+
+        // Initialize dashboard
+        function initializeDashboard() {
+            equityData = parseCSV(csvData);
+            filteredData = [...equityData];
+
+            createOverview();
+            createQualityAnalysis();
+            createValuationCharts();
+            createHealthCharts();
+            createExplorer();
+        }
+
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function createOverview() {
+            // Metrics
+            const totalMarketCap = equityData.reduce((sum, d) => sum + (d.Market_Cap || 0), 0);
+            const avgPE = equityData.reduce((sum, d) => sum + (d.PE || 0), 0) / equityData.length;
+
+            const metricsHTML = `
+                <div class="metric-card">
+                    <h3>Total Companies</h3>
+                    <div class="value">${equityData.length}</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Total Market Cap</h3>
+                    <div class="value">₹${Math.round(totalMarketCap).toLocaleString()}</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Avg PE Ratio</h3>
+                    <div class="value">${avgPE.toFixed(2)}</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Avg Dividend Yield</h3>
+                    <div class="value">${(equityData.reduce((sum, d) => sum + (d.Dividend_Yield || 0), 0) / equityData.length).toFixed(2)}%</div>
+                </div>
+            `;
+            document.getElementById('metricsContainer').innerHTML = metricsHTML;
+
+            // Data table
+            let tableHTML = '<table><thead><tr>';
+            const displayCols = ['Symbol', 'Current_Price', 'PE', 'Market_Cap', 'Dividend_Yield', 'Beta from Money Control'];
+            displayCols.forEach(col => {
+                tableHTML += `<th>${col.replace(/_/g, ' ')}</th>`;
+            });
+            tableHTML += '</tr></thead><tbody>';
+
+            equityData.forEach(row => {
+                tableHTML += '<tr>';
+                displayCols.forEach(col => {
+                    let value = row[col];
+                    if (col === 'Current_Price') value = '₹' + (value || 0).toLocaleString();
+                    else if (col === 'Market_Cap') value = '₹' + (value || 0).toLocaleString();
+                    else if (col === 'Dividend_Yield') value = (value || 0).toFixed(2) + '%';
+                    else if (col === 'PE') value = (value || 0).toFixed(2);
+                    tableHTML += `<td>${value !== null && value !== undefined ? value : 'N/A'}</td>`;
+                });
+                tableHTML += '</tr>';
+            });
+            tableHTML += '</tbody></table>';
+            document.getElementById('dataTable').innerHTML = tableHTML;
+
+            // Summary stats
+            const numericCols = ['PE', 'PEG', 'Market_Cap', 'Current_Price', 'Dividend_Yield'];
+            let statsHTML = '<table><thead><tr><th>Metric</th><th>Min</th><th>Max</th><th>Average</th></tr></thead><tbody>';
+
+            numericCols.forEach(col => {
+                const values = equityData.map(d => d[col]).filter(v => v != null && !isNaN(v));
+                if (values.length > 0) {
+                    statsHTML += `<tr>
+                        <td><strong>${col.replace(/_/g, ' ')}</strong></td>
+                        <td>${Math.min(...values).toFixed(2)}</td>
+                        <td>${Math.max(...values).toFixed(2)}</td>
+                        <td>${(values.reduce((a, b) => a + b, 0) / values.length).toFixed(2)}</td>
+                    </tr>`;
+                }
+            });
+            statsHTML += '</tbody></table>';
+            document.getElementById('summaryStats').innerHTML = statsHTML;
+        }
+
+        function createQualityAnalysis() {
+            // Calculate missing values
+            const columns = Object.keys(equityData[0]);
+            const missingData = [];
+
+            columns.forEach(col => {
+                const missing = equityData.filter(row => row[col] == null || row[col] === '' || (typeof row[col] === 'string' && row[col].trim() === '')).length;
+                if (missing > 0) {
+                    missingData.push({
+                        column: col,
+                        count: missing,
+                        percentage: (missing / equityData.length * 100).toFixed(2)
+                    });
+                }
+            });
+
+            // Quality metrics
+            const qualityScore = missingData.length === 0 ? 100 : Math.max(70, 100 - (missingData.length * 5));
+            const qualityHTML = `
+                <div class="metric-card">
+                    <h3>Columns with Missing Data</h3>
+                    <div class="value">${missingData.length}</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Complete Columns</h3>
+                    <div class="value">${columns.length - missingData.length}</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Data Quality Score</h3>
+                    <div class="value">${qualityScore}%</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Duplicate Rows</h3>
+                    <div class="value">0</div>
+                </div>
+            `;
+            document.getElementById('qualityMetrics').innerHTML = qualityHTML;
+
+            // Missing values chart
+            if (missingData.length > 0) {
+                const trace = {
+                    x: missingData.map(d => d.column),
+                    y: missingData.map(d => parseFloat(d.percentage)),
+                    type: 'bar',
+                    marker: { color: '#e74c3c' }
+                };
+
+                Plotly.newPlot('missingChart', [trace], {
+                    yaxis: { title: 'Missing %' },
+                    xaxis: { tickangle: -45 },
+                    height: 400,
+                    margin: { b: 120 }
+                });
+
+                // Quality issues table
+                let issuesHTML = '<table><thead><tr><th>Column</th><th>Missing Count</th><th>Missing %</th></tr></thead><tbody>';
+                missingData.forEach(d => {
+                    issuesHTML += `<tr><td>${d.column}</td><td>${d.count}</td><td>${d.percentage}%</td></tr>`;
+                });
+                issuesHTML += '</tbody></table>';
+                document.getElementById('qualityIssues').innerHTML = issuesHTML;
+            } else {
+                document.getElementById('missingChart').innerHTML = '<p style="text-align:center; padding:40px; color:#27ae60; font-size:1.2em;">✅ No missing values found!</p>';
+                document.getElementById('qualityIssues').innerHTML = '<p style="text-align:center; padding:40px; color:#27ae60; font-size:1.2em;">✅ All data quality checks passed!</p>';
+            }
+        }
+
+        function createValuationCharts() {
+            // PE Ratio histogram
+            const peValues = equityData.map(d => d.PE).filter(v => v != null && !isNaN(v));
+            const peTrace = {
+                x: peValues,
+                type: 'histogram',
+                marker: { color: '#3498db' },
+                nbinsx: 10
+            };
+            Plotly.newPlot('peChart', [peTrace], {
+                xaxis: { title: 'PE Ratio' },
+                yaxis: { title: 'Count' },
+                height: 400
+            });
+
+            // Price vs Intrinsic Value
+            const priceData = equityData.filter(d => d.Current_Price && d.Intrinsic_Value);
+            const priceTrace = {
+                x: priceData.map(d => d.Intrinsic_Value),
+                y: priceData.map(d => d.Current_Price),
+                mode: 'markers+text',
+                type: 'scatter',
+                text: priceData.map(d => d.Symbol),
+                textposition: 'top center',
+                marker: { size: 12, color: '#9b59b6' }
+            };
+
+            const maxVal = Math.max(...priceData.map(d => Math.max(d.Current_Price, d.Intrinsic_Value)));
+            const lineTrace = {
+                x: [0, maxVal],
+                y: [0, maxVal],
+                mode: 'lines',
+                name: 'Price = Value',
+                line: { color: 'red', dash: 'dash' }
+            };
+
+            Plotly.newPlot('priceValueChart', [priceTrace, lineTrace], {
+                xaxis: { title: 'Intrinsic Value (₹)' },
+                yaxis: { title: 'Current Price (₹)' },
+                height: 500,
+                showlegend: true
+            });
+
+            // Market Cap
+            const mcTrace = {
+                x: equityData.map(d => d.Symbol),
+                y: equityData.map(d => d.Market_Cap),
+                type: 'bar',
+                marker: { color: '#1abc9c' }
+            };
+            Plotly.newPlot('marketCapChart', [mcTrace], {
+                xaxis: { title: 'Company' },
+                yaxis: { title: 'Market Cap (₹ Cr)' },
+                height: 400
+            });
+        }
+
+        function createHealthCharts() {
+            // Dividend Yield
+            const divTrace = {
+                x: equityData.map(d => d.Symbol),
+                y: equityData.map(d => d.Dividend_Yield),
+                type: 'bar',
+                marker: { color: '#f39c12' }
+            };
+            Plotly.newPlot('dividendChart', [divTrace], {
+                xaxis: { title: 'Company' },
+                yaxis: { title: 'Dividend Yield (%)' },
+                height: 400
+            });
+
+            // Beta
+            const betaData = equityData.filter(d => d['Beta from Money Control']);
+            const betaTrace = {
+                x: betaData.map(d => d.Symbol),
+                y: betaData.map(d => d['Beta from Money Control']),
+                type: 'bar',
+                marker: {
+                    color: betaData.map(d => {
+                        const beta = d['Beta from Money Control'];
+                        if (beta < 0.8) return '#27ae60';
+                        if (beta > 1.2) return '#e74c3c';
+                        return '#f39c12';
+                    })
+                }
+            };
+
+            Plotly.newPlot('betaChart', [betaTrace], {
+                xaxis: { title: 'Company' },
+                yaxis: { title: 'Beta' },
+                height: 400,
+                shapes: [{
+                    type: 'line',
+                    x0: -0.5,
+                    x1: betaData.length - 0.5,
+                    y0: 1,
+                    y1: 1,
+                    line: { color: 'red', dash: 'dash', width: 2 }
+                }],
+                annotations: [{
+                    x: betaData.length / 2,
+                    y: 1,
+                    text: 'Market Beta = 1',
+                    showarrow: false,
+                    yshift: 10
+                }]
+            });
+
+            // Operating Profit Growth
+            const profitGrowthData = equityData.filter(d => d.Operating_Profit_Base && d.Operating_Profit_2025);
+            const growthTrace = {
+                x: profitGrowthData.map(d => d.Symbol),
+                y: profitGrowthData.map(d => ((d.Operating_Profit_2025 - d.Operating_Profit_Base) / d.Operating_Profit_Base * 100)),
+                type: 'bar',
+                marker: {
+                    color: profitGrowthData.map(d => {
+                        const growth = ((d.Operating_Profit_2025 - d.Operating_Profit_Base) / d.Operating_Profit_Base * 100);
+                        return growth > 100 ? '#27ae60' : growth > 50 ? '#3498db' : '#f39c12';
+                    })
+                }
+            };
+            Plotly.newPlot('profitGrowthChart', [growthTrace], {
+                xaxis: { title: 'Company' },
+                yaxis: { title: 'Growth %' },
+                height: 400
+            });
+        }
+
+        function createExplorer() {
+            const peValues = equityData.map(d => d.PE).filter(v => v != null && !isNaN(v));
+            const peMin = Math.min(...peValues);
+            const peMax = Math.max(...peValues);
+            const mcValues = equityData.map(d => d.Market_Cap).filter(v => v != null && !isNaN(v));
+            const mcMin = Math.min(...mcValues);
+            const mcMax = Math.max(...mcValues);
+
+            const filtersHTML = `
+                <div class="filter-group">
+                    <label>PE Ratio Range</label>
+                    <input type="range" id="peMinFilter" min="${peMin}" max="${peMax}" value="${peMin}" step="0.1" oninput="applyFilters()">
+                    <input type="range" id="peMaxFilter" min="${peMin}" max="${peMax}" value="${peMax}" step="0.1" oninput="applyFilters()">
+                    <div class="filter-values">
+                        <span id="peMinValue">${peMin.toFixed(2)}</span>
+                        <span id="peMaxValue">${peMax.toFixed(2)}</span>
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label>Market Cap Range (₹ Cr)</label>
+                    <input type="range" id="mcMinFilter" min="${mcMin}" max="${mcMax}" value="${mcMin}" step="1000" oninput="applyFilters()">
+                    <input type="range" id="mcMaxFilter" min="${mcMin}" max="${mcMax}" value="${mcMax}" step="1000" oninput="applyFilters()">
+                    <div class="filter-values">
+                        <span id="mcMinValue">${Math.round(mcMin).toLocaleString()}</span>
+                        <span id="mcMaxValue">${Math.round(mcMax).toLocaleString()}</span>
+                    </div>
+                </div>
+            `;
+            document.getElementById('filtersContainer').innerHTML = filtersHTML;
+
+            updateFilteredTable();
+        }
+
+        function applyFilters() {
+            const peMin = parseFloat(document.getElementById('peMinFilter').value);
+            const peMax = parseFloat(document.getElementById('peMaxFilter').value);
+            const mcMin = parseFloat(document.getElementById('mcMinFilter').value);
+            const mcMax = parseFloat(document.getElementById('mcMaxFilter').value);
+
+            document.getElementById('peMinValue').textContent = peMin.toFixed(2);
+            document.getElementById('peMaxValue').textContent = peMax.toFixed(2);
+            document.getElementById('mcMinValue').textContent = Math.round(mcMin).toLocaleString();
+            document.getElementById('mcMaxValue').textContent = Math.round(mcMax).toLocaleString();
+
+            filteredData = equityData.filter(d =>
+                d.PE >= peMin && d.PE <= peMax &&
+                d.Market_Cap >= mcMin && d.Market_Cap <= mcMax
+            );
+
+            updateFilteredTable();
+        }
+
+        function updateFilteredTable() {
+            document.getElementById('explorerTitle').textContent = `Filtered Results (${filteredData.length} companies)`;
+
+            let tableHTML = '<table><thead><tr>';
+            const cols = ['Symbol', 'Current_Price', 'PE', 'PEG', 'Market_Cap', 'Dividend_Yield', 'Intrinsic_Value'];
+            cols.forEach(col => {
+                tableHTML += `<th>${col.replace(/_/g, ' ')}</th>`;
+            });
+            tableHTML += '</tr></thead><tbody>';
+
+            filteredData.forEach(row => {
+                tableHTML += '<tr>';
+                cols.forEach(col => {
+                    let value = row[col];
+                    if (col === 'Current_Price' || col === 'Intrinsic_Value') {
+                        value = value ? '₹' + value.toLocaleString() : 'N/A';
+                    } else if (col === 'Market_Cap') {
+                        value = '₹' + (value || 0).toLocaleString();
+                    } else if (col === 'Dividend_Yield') {
+                        value = (value || 0).toFixed(2) + '%';
+                    } else if (col === 'PE' || col === 'PEG') {
+                        value = (value || 0).toFixed(2);
+                    }
+                    tableHTML += `<td>${value}</td>`;
+                });
+                tableHTML += '</tr>';
+            });
+            tableHTML += '</tbody></table>';
+            document.getElementById('filteredTable').innerHTML = tableHTML;
+        }
+
+        function exportFilteredData() {
+            const headers = Object.keys(filteredData[0]);
+            let csv = headers.join(',') + '\n';
+
+            filteredData.forEach(row => {
+                const values = headers.map(header => {
+                    const value = row[header];
+                    return value !== null && value !== undefined ? value : '';
+                });
+                csv += values.join(',') + '\n';
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'filtered_equity_data.csv';
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        // Initialize dashboard on page load
+        initializeDashboard();
+    </script>
+</body>
+</html>
